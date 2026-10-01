@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>义亭镇 · AI 智能调解</title>
+  <style>
+    :root {
+      --ink: #16324f;
+      --muted: #5b7190;
+      --line: #d5e3f2;
+      --a: #1a73e8;
+      --card: #ffffff;
+      --sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+      --serif: "Iowan Old Style", Palatino, "Songti SC", "Noto Serif SC", serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      font-family: var(--sans);
+      color: var(--ink);
+      background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 48%, #eaf2fb 100%);
+    }
+    .portal {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      width: min(980px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 48px 0;
+    }
+    h1 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 40px;
+      font-weight: 650;
+      letter-spacing: 0.02em;
+    }
+    .lead { margin: 10px 0 0; color: var(--muted); font-size: 18px; }
+    .entries {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 22px;
+      margin-top: 36px;
+    }
+    a.entry {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 220px;
+      padding: 28px 26px;
+      text-decoration: none;
+      color: inherit;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 10px 28px rgba(22, 78, 140, 0.08);
+    }
+    a.entry:hover { border-color: var(--a); }
+    a.entry:focus-visible { outline: 3px solid var(--a); outline-offset: 3px; }
+    a.entry h2 {
+      margin: 0;
+      font-family: var(--serif);
+      font-size: 28px;
+      font-weight: 650;
+    }
+    a.entry p { margin: 0; color: var(--muted); line-height: 1.7; }
+    a.entry span {
+      margin-top: auto;
+      color: var(--a);
+      font-weight: 650;
+    }
+    @media (max-width: 800px) {
+      h1 { font-size: 32px; }
+      .entries { grid-template-columns: 1fr; }
+      a.entry { min-height: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="portal">
+    <h1>义亭镇 · AI 智能调解</h1>
+    <p class="lead">选择要进入的页面</p>
+    <div class="entries">
+      <a class="entry" href="prototype/index.html">
+        <h2>调解大屏</h2>
+        <p>甲乙双方陈述诉求、确认表述，并查看调解建议、相似案例和法律法规。</p>
+        <span>进入大屏</span>
+      </a>
+      <a class="entry" href="prototype/admin.html">
+        <h2>管理后台</h2>
+        <p>审核涉及赔偿金额的调解建议，并查看历史记录。账号和密码已填好。</p>
+        <span>进入后台</span>
+      </a>
+    </div>
+  </main>
+</body>
+</html>
