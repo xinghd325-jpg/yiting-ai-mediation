@@ -5,6 +5,7 @@
   var SpeechApi = window.SpeechRecognition || window.webkitSpeechRecognition;
   var recognition = null;
   var speechBase = "";
+  var speechGeneration = 0;
 
   function party() {
     return { rounds: [], draft: "", sampleIndex: 0, normalized: null, accepted: false };
@@ -86,13 +87,97 @@
   }
 
   function stopListening() {
+    speechGeneration += 1;
     state.listening = null;
     if (!recognition) return;
     recognition.onresult = null;
     recognition.onerror = null;
     recognition.onend = null;
-    try { recognition.stop(); } catch (error) { /* already stopped */ }
+    try { recognition.abort(); } catch (error) {
+      try { recognition.stop(); } catch (stopError) { /* already stopped */ }
+    }
     recognition = null;
+  }
+
+  function speechErrorText(error) {
+    if (error === "not-allowed") return "浏览器没有允许使用麦克风。请在地址栏允许后重试，或直接打字。";
+    if (error === "audio-capture") return "没有找到可用的麦克风。请检查设备后重试，或直接打字。";
+    if (error === "network" || error === "service-not-allowed") return "在线语音服务连不上。请用 Chrome 允许下载中文语音包后再试，或直接打字。";
+    if (error === "language-not-supported") return "还没有中文语音包。请允许浏览器下载后，再点一次语音输入。";
+    return "这次没有识别成功，请再试一次，或直接打字。";
+  }
+
+  function prepareLocalSpeech() {
+    if (!SpeechApi || typeof SpeechApi.available !== "function" || typeof SpeechApi.install !== "function") {
+      return Promise.resolve(false);
+    }
+    var options = { langs: ["zh-CN"], processLocally: true, quality: "dictation" };
+    return SpeechApi.available(options).then(function (status) {
+      if (status === "available") return true;
+      if (status !== "downloadable" && status !== "downloading") return false;
+      state.speechHint = "正在准备中文语音包，请在浏览器提示里允许下载。";
+      render();
+      return SpeechApi.install(options).then(function (ok) { return !!ok; });
+    }).catch(function () { return false; });
+  }
+
+  function beginRecognition(side, local, generation) {
+    if (generation !== speechGeneration || state.listening !== side || state.phase !== "collect") return;
+    var person = state.parties[side];
+    speechBase = person.draft || "";
+    if (speechBase && !/\s$/.test(speechBase)) speechBase += "\n";
+    recognition = new SpeechApi();
+    recognition.lang = "zh-CN";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    if (local) recognition.processLocally = true;
+    var fatal = false;
+    recognition.onresult = function (event) {
+      var finalText = "";
+      var interim = "";
+      for (var i = 0; i < event.results.length; i += 1) {
+        var piece = event.results[i][0].transcript;
+        if (event.results[i].isFinal) finalText += piece;
+        else interim += piece;
+      }
+      person.draft = speechBase + finalText + interim;
+      var box = document.querySelector('[data-draft="' + side + '"]');
+      if (box && box.value !== person.draft) box.value = person.draft;
+      var button = document.querySelector('[data-add="' + side + '"]');
+      if (button) button.disabled = !person.draft.trim();
+    };
+    recognition.onerror = function (event) {
+      if (generation !== speechGeneration) return;
+      if (event.error === "aborted" || event.error === "no-speech") return;
+      fatal = true;
+      state.speechHint = speechErrorText(event.error);
+      state.listening = null;
+      recognition = null;
+      render();
+    };
+    recognition.onend = function () {
+      if (generation !== speechGeneration || fatal || state.listening !== side) return;
+      speechBase = person.draft || "";
+      if (speechBase && !/\s$/.test(speechBase)) speechBase += "\n";
+      window.setTimeout(function () {
+        if (generation !== speechGeneration || state.listening !== side || !recognition) return;
+        try { recognition.start(); } catch (error) {
+          state.speechHint = "语音识别已中断，请再点一次语音输入，或直接打字。";
+          stopListening();
+          render();
+        }
+      }, 250);
+    };
+    try {
+      recognition.start();
+      state.speechHint = "";
+      render();
+    } catch (error) {
+      state.speechHint = speechErrorText("audio-capture");
+      state.listening = null;
+      recognition = null;
+      render();
+    }
   }
 
   function render() {
@@ -337,7 +422,7 @@
         text: sampleDone ? "示例已全部载入" : "载入示例发言"
       })
     ]));
-    if (!SpeechApi) wrap.append(h("p", { class: "hint", text: "当前浏览器不支持语音，请打字。" }));
+    if (!SpeechApi) wrap.append(h("p", { class: "hint", text: "请用 Chrome 打开后再语音输入。当前浏览器只能打字。" }));
     return wrap;
   }
 
@@ -487,55 +572,18 @@
     if (!SpeechApi) return;
     if (state.listening === side) {
       stopListening();
+      state.speechHint = "";
       render();
       return;
     }
     stopListening();
-    var person = state.parties[side];
-    speechBase = person.draft || "";
-    if (speechBase && !/\s$/.test(speechBase)) speechBase += "\n";
-    recognition = new SpeechApi();
-    recognition.lang = "zh-CN";
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.onresult = function (event) {
-      var finalText = "";
-      var interim = "";
-      for (var i = 0; i < event.results.length; i += 1) {
-        var piece = event.results[i][0].transcript;
-        if (event.results[i].isFinal) finalText += piece;
-        else interim += piece;
-      }
-      person.draft = speechBase + finalText + interim;
-      var box = document.querySelector('[data-draft="' + side + '"]');
-      if (box) box.value = person.draft;
-      var button = document.querySelector('[data-add="' + side + '"]');
-      if (button) button.disabled = !person.draft.trim();
-    };
-    recognition.onerror = function (event) {
-      if (event.error === "aborted") return;
-      state.speechHint = "无法使用麦克风，请打字。";
-      state.listening = null;
-      recognition = null;
-      render();
-    };
-    recognition.onend = function () {
-      if (state.listening !== side) return;
-      state.listening = null;
-      recognition = null;
-      render();
-    };
-    try {
-      recognition.start();
-      state.listening = side;
-      state.speechHint = "";
-      render();
-    } catch (error) {
-      state.speechHint = "无法使用麦克风，请打字。";
-      state.listening = null;
-      recognition = null;
-      render();
-    }
+    var generation = speechGeneration;
+    state.listening = side;
+    state.speechHint = "正在准备语音";
+    render();
+    prepareLocalSpeech().then(function (local) {
+      beginRecognition(side, local, generation);
+    });
   }
 
   function finishTalk() {
