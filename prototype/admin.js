@@ -55,7 +55,7 @@
     document.getElementById("app").replaceChildren(
       h("header", { class: "topbar" }, [
         h("div", { class: "brand" }, [
-          h("h1", { text: "义亭镇 · AI 智能调解 · 管理后台" }),
+          h("h1", { text: "矛盾纠纷智能调解 · 管理后台" }),
           h("p", { text: "审核涉及赔偿金额的调解建议" })
         ]),
         h("button", { class: "line", type: "button", text: "退出", onclick: logout })
@@ -169,7 +169,7 @@
     return h("div", { class: "table-wrap" }, [
       h("table", {}, [
         h("thead", {}, [
-          h("tr", {}, ["时间", "案件", "甲方主张", "乙方主张", "建议金额", "审核", ""].map(function (label) {
+          h("tr", {}, ["时间", "案件", "申请人主张", "被申请人主张", "建议金额", "审核", ""].map(function (label) {
             return h("th", { text: label });
           }))
         ]),
@@ -197,8 +197,8 @@
     if (record.reviewNote) notes.push("退回原因：" + record.reviewNote);
     if (record.adjustmentNote) notes.push("操作人员调整：" + record.adjustmentNote);
     return h("section", { class: "detail" }, [
-      block("甲方", record.partyA.normalized),
-      block("乙方", record.partyB.normalized),
+      block("申请人", record.partyA.normalized),
+      block("被申请人", record.partyB.normalized),
       block("调解建议", record.suggestion, true),
       notes.length ? block("审核往来", notes.join("\n\n"), true) : null,
       block("法律法规依据", laws),

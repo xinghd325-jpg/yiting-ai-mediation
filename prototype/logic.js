@@ -26,7 +26,7 @@
   }
 
   function partyTitle(side) {
-    return side === "A" ? "甲方" : "乙方";
+    return side === "A" ? "申请人" : "被申请人";
   }
 
   function requestLines(rounds) {
@@ -126,14 +126,14 @@
     var lines = [];
 
     var admitted = [];
-    if (/承认/.test(left)) admitted.push("甲方");
-    if (/承认/.test(right)) admitted.push("乙方");
+    if (/承认/.test(left)) admitted.push("申请人");
+    if (/承认/.test(right)) admitted.push("被申请人");
     lines.push("争议焦点");
     lines.push("漏水原因：" + (admitted.length
       ? admitted.join("、") + "已承认漏水。"
       : "尚未有一方明确承认漏水，建议先共同确认漏水点。"));
     lines.push("损害范围：" + scope.scopeText + "。");
-    lines.push("费用项目：甲方主张" + amountLabel(amountA) + "，乙方主张" + amountLabel(amountB) + "。" + mentionedFees(combined));
+    lines.push("费用项目：申请人主张" + amountLabel(amountA) + "，被申请人主张" + amountLabel(amountB) + "。" + mentionedFees(combined));
     lines.push("");
     lines.push("责任与履行");
     lines.push("1. 双方于3日内共同查看并确认漏水点。");
@@ -156,18 +156,18 @@
     lines.push("");
     lines.push("金额如何确定");
     if (amountA != null && amountB != null) {
-      lines.push("甲方主张" + amountA + "元，乙方主张" + amountB + "元，差额" + Math.abs(amountA - amountB) + "元。");
+      lines.push("申请人主张" + amountA + "元，被申请人主张" + amountB + "元，差额" + Math.abs(amountA - amountB) + "元。");
     } else if (amountA != null) {
-      lines.push("甲方主张" + amountA + "元，乙方主张未明确。");
+      lines.push("申请人主张" + amountA + "元，被申请人主张未明确。");
     } else if (amountB != null) {
-      lines.push("甲方主张未明确，乙方主张" + amountB + "元。");
+      lines.push("申请人主张未明确，被申请人主张" + amountB + "元。");
     }
     if (scope.amount == null) {
       lines.push("受损部位不足，本次不报修复金，也不取双方主张的平均数。");
     } else {
       lines.push(scope.anchor);
       lines.push("建议修复金" + scope.amount + "元。建议修复金按受损范围档次确定，不是双方主张的平均数。");
-      [sideGap("甲方", amountA, scope.amount), sideGap("乙方", amountB, scope.amount)].forEach(function (line) {
+      [sideGap("申请人", amountA, scope.amount), sideGap("被申请人", amountB, scope.amount)].forEach(function (line) {
         if (line) lines.push(line);
       });
     }
@@ -183,8 +183,8 @@
     var left = textA || "";
     var right = textB || "";
     var admitted = [];
-    if (/承认/.test(left)) admitted.push("甲方");
-    if (/承认/.test(right)) admitted.push("乙方");
+    if (/承认/.test(left)) admitted.push("申请人");
+    if (/承认/.test(right)) admitted.push("被申请人");
     var lines = [];
     lines.push("争议焦点");
     lines.push("堆放情况：" + (admitted.length

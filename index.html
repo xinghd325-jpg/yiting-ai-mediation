@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>义亭镇 · AI 智能调解</title>
+  <title>矛盾纠纷智能调解</title>
   <style>
     :root {
       --ink: #16324f;
@@ -21,6 +21,37 @@
       color: var(--ink);
       background: linear-gradient(180deg, #ffffff 0%, #f4f8fd 48%, #eaf2fb 100%);
     }
+    .switch {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      z-index: 2;
+      display: flex;
+      gap: 4px;
+      padding: 4px;
+      background: #fff;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      box-shadow: 0 8px 20px rgba(22, 78, 140, 0.08);
+    }
+    .opt { position: relative; }
+    .opt input {
+      position: absolute;
+      inset: 0;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+    .opt span {
+      display: block;
+      padding: 8px 16px;
+      border-radius: 999px;
+      color: var(--ink);
+      font-weight: 650;
+      line-height: 1.2;
+    }
+    .opt:has(input:checked) span { background: var(--a); color: #fff; }
+    .opt:has(input:focus-visible) span { outline: 3px solid var(--a); outline-offset: 2px; }
     .portal {
       min-height: 100vh;
       display: flex;
@@ -28,7 +59,7 @@
       justify-content: center;
       width: min(980px, calc(100% - 40px));
       margin: 0 auto;
-      padding: 48px 0;
+      padding: 84px 0 48px;
     }
     h1 {
       margin: 0;
@@ -38,12 +69,18 @@
       letter-spacing: 0.02em;
     }
     .lead { margin: 10px 0 0; color: var(--muted); font-size: 18px; }
+    .lead-review { display: none; }
     .entries {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 22px;
       margin-top: 36px;
     }
+    .entries-review { display: none; }
+    body:has(#mode-review:checked) .lead-record,
+    body:has(#mode-review:checked) .entries-record { display: none; }
+    body:has(#mode-review:checked) .lead-review { display: block; }
+    body:has(#mode-review:checked) .entries-review { display: grid; }
     a.entry {
       display: flex;
       flex-direction: column;
@@ -72,20 +109,45 @@
       font-weight: 650;
     }
     @media (max-width: 800px) {
+      .switch { top: 12px; right: 12px; }
+      .opt span { padding: 8px 12px; }
       h1 { font-size: 32px; }
-      .entries { grid-template-columns: 1fr; }
+      .entries, body:has(#mode-review:checked) .entries-review { grid-template-columns: 1fr; }
       a.entry { min-height: 0; }
     }
   </style>
 </head>
 <body>
+  <div class="switch" role="radiogroup" aria-label="页面版本">
+    <label class="opt">
+      <input id="mode-record" type="radio" name="mode" value="record" checked>
+      <span>无需审核</span>
+    </label>
+    <label class="opt">
+      <input id="mode-review" type="radio" name="mode" value="review">
+      <span>需要审核</span>
+    </label>
+  </div>
   <main class="portal">
-    <h1>义亭镇 · AI 智能调解</h1>
-    <p class="lead">选择要进入的页面</p>
-    <div class="entries">
+    <h1>矛盾纠纷智能调解</h1>
+    <p class="lead lead-record">当前为无需审核。选择要进入的页面。</p>
+    <p class="lead lead-review">当前为需要审核。选择要进入的页面。</p>
+    <div class="entries entries-record">
+      <a class="entry" href="record/index.html">
+        <h2>调解大屏</h2>
+        <p>申请人和被申请人陈述诉求、确认表述，并查看调解建议、相似案例和法律法规。</p>
+        <span>进入大屏</span>
+      </a>
+      <a class="entry" href="record/admin.html">
+        <h2>管理后台</h2>
+        <p>查看调解记录。账号和密码已填好。</p>
+        <span>进入后台</span>
+      </a>
+    </div>
+    <div class="entries entries-review">
       <a class="entry" href="prototype/index.html">
         <h2>调解大屏</h2>
-        <p>甲乙双方陈述诉求、确认表述，并查看调解建议、相似案例和法律法规。</p>
+        <p>申请人和被申请人陈述诉求、确认表述。涉及具体金额的建议需先审核，通过后再展示。</p>
         <span>进入大屏</span>
       </a>
       <a class="entry" href="prototype/admin.html">

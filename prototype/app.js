@@ -205,7 +205,7 @@
     });
     return h("header", { class: "topbar" }, [
       h("div", { class: "brand" }, [
-        h("h1", { text: "义亭镇 · AI 智能调解" })
+        h("h1", { text: "矛盾纠纷智能调解" })
       ]),
       steps,
       h("div", { class: "top-actions" }, [
@@ -353,7 +353,7 @@
         ]));
       });
       row.append(h("div", { class: "advice-col" }, [
-        h("h3", { class: "advice-title claim-label " + side.toLowerCase(), text: side === "A" ? "甲方" : "乙方" }),
+        h("h3", { class: "advice-title claim-label " + side.toLowerCase(), text: side === "A" ? "申请人" : "被申请人" }),
         h("article", { class: "panel" }, [
           h("div", { class: "claim-text", text: person.normalized || "" }),
           details
@@ -367,7 +367,7 @@
     var person = state.parties[side];
     var column = h("section", { class: "party " + side.toLowerCase() }, [
       h("div", { class: "party-head" }, [
-        h("h2", { text: side === "A" ? "甲方" : "乙方" })
+        h("h2", { text: side === "A" ? "申请人" : "被申请人" })
       ])
     ]);
     if (state.phase === "collect") column.append(renderCollect(side, person));
@@ -482,7 +482,7 @@
     }
     if (state.organizing) return bar;
     if (!bothAccepted() && state.phase === "confirm") {
-      bar.append(h("span", { class: "need", text: "本版诉求描述须经甲乙双方确认。双方均确认后，方可生成调解建议。" }));
+      bar.append(h("span", { class: "need", text: "本版诉求描述须经申请人和被申请人确认。双方均确认后，方可生成调解建议。" }));
       return bar;
     }
     if (state.phase === "confirm") {
@@ -499,7 +499,6 @@
     var suggestion = h("div", { class: "advice-col" }, [
       h("h3", { class: "advice-title", text: "调解建议" }),
       h("article", { class: "panel" }, [
-        h("p", { class: "kicker", text: "演示推算" }),
         h("p", { class: "figure", text: advice.headline || (advice.suggestedAmount == null ? "本次不报修复金" : "建议修复金 " + advice.suggestedAmount + "元") }),
         h("div", { class: "prose", text: advice.suggestion })
       ])
@@ -684,8 +683,8 @@
         id: recordId,
         createdAt: new Date().toISOString(),
         caseTitle: scenario.caseTitle,
-        partyA: { name: "甲方", normalized: left, amount: Logic.parseAmount(left) },
-        partyB: { name: "乙方", normalized: right, amount: Logic.parseAmount(right) },
+        partyA: { name: "申请人", normalized: left, amount: Logic.parseAmount(left) },
+        partyB: { name: "被申请人", normalized: right, amount: Logic.parseAmount(right) },
         suggestion: result.suggestion,
         suggestedAmount: result.suggestedAmount,
         headline: result.headline,

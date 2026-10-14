@@ -17,7 +17,7 @@ test("normalized text keeps original rounds, title, amount, and requests", funct
     { text: "客厅吊顶渗水。" },
     { text: "我要求恢复墙面。一共主张 18000 元。" }
   ]);
-  assert.match(text, /甲方的诉求如下/);
+  assert.match(text, /申请人的诉求如下/);
   assert.doesNotMatch(text, /楼下住户|楼上住户/);
   assert.match(text, /1\. 客厅吊顶渗水。/);
   assert.match(text, /2\. 我要求恢复墙面。一共主张 18000 元。/);
@@ -26,7 +26,7 @@ test("normalized text keeps original rounds, title, amount, and requests", funct
   assert.doesNotMatch(text, /请求事项：\n客厅吊顶渗水/);
 
   const unnamed = buildNormalized("B", [{ text: "楼上漏了水。" }]);
-  assert.match(unnamed, /乙方的诉求如下/);
+  assert.match(unnamed, /被申请人的诉求如下/);
   assert.doesNotMatch(unnamed, /楼下住户|楼上住户/);
   assert.match(unnamed, /主张金额：未明确。/);
   assert.match(unnamed, /见上述事实经过。/);
@@ -45,7 +45,7 @@ test("wall plus ceiling uses 10000 rather than the average of 18000 and 4000", f
   assert.match(advice.suggestion, /不是双方主张的平均数/);
   assert.match(advice.suggestion, /差额14000元/);
   assert.match(advice.suggestion, /不按购买原价计入本次修复金/);
-  assert.match(advice.suggestion, /乙方已承认漏水/);
+  assert.match(advice.suggestion, /被申请人已承认漏水/);
   assert.doesNotMatch(advice.suggestion, /楼下住户|楼上住户|楼上已承认|楼上于15日|楼下配合/);
   assert.match(advice.suggestion, /本次不计入建议金额/);
 });
@@ -105,7 +105,7 @@ test("hallway example stays off specific amounts", function () {
   assert.match(advice.suggestion, /金额如何确定/);
   assert.match(advice.suggestion, /不报赔偿金额/);
   assert.match(advice.suggestion, /也不取双方陈述的平均数/);
-  assert.match(advice.suggestion, /乙方已承认楼道里的东西挡住了通行/);
+  assert.match(advice.suggestion, /被申请人已承认楼道里的东西挡住了通行/);
   assert.doesNotMatch(advice.suggestion, /建议修复金|噪声|楼下住户|楼上住户/);
   assert.equal(hallway.laws.some(function (law) { return /对应关系|对本案/.test(law.citation + law.text); }), false);
 });
