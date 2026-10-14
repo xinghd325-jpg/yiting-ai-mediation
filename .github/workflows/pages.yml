@@ -1,0 +1,49 @@
+name: Deploy GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Assemble site without changing public paths
+        run: |
+          set -euo pipefail
+          mkdir -p _site
+          if [ -f "原型演示/index.html" ]; then
+            cp -a "原型演示"/. _site/
+          else
+            cp -a index.html prototype record docs _site/
+          fi
+          if [ -d "方案" ]; then
+            mkdir -p "_site/方案"
+            cp -a "方案"/. "_site/方案/"
+          fi
+          if [ -f "需求.docx" ]; then
+            cp -a "需求.docx" _site/
+          fi
+          touch _site/.nojekyll
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
