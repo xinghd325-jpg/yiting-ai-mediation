@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>矛盾纠纷智能调解助手</title>
+<style>
+  :root {
+    --red: #C00000;
+    --red-deep: #8E1212;
+    --ink: #1F2329;
+    --muted: #5E6772;
+    --line: #E6E8EC;
+    --gold: #E0A325;
+    --paper: #ffffff;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #cfd4dc; overflow: hidden; }
+  body { font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif; color: var(--ink); }
+  #viewport { width: 100vw; height: 100vh; position: relative; }
+  #deck {
+    width: 1920px; height: 1080px; position: absolute; left: 50%; top: 50%;
+    transform-origin: center center;
+  }
+  .slide {
+    display: none; width: 1920px; height: 1080px; position: absolute; inset: 0;
+    background: var(--paper); overflow: hidden;
+  }
+  .slide.on { display: block; }
+
+  /* content chrome — matches template: red title, color bar, logo, page no. */
+  .chrome {
+    position: absolute; left: 54px; top: 22px; right: 36px; height: 92px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
+  }
+  .chrome h2 {
+    margin: 0; font-size: 44px; line-height: 1.15; font-weight: 700; color: var(--red);
+    letter-spacing: 1px; white-space: nowrap;
+  }
+  .logo { height: 72px; width: auto; display: block; }
+  .bar {
+    position: absolute; left: 54px; top: 124px; width: 1810px; height: 12px;
+    object-fit: cover; object-position: center;
+  }
+  .body { position: absolute; left: 64px; right: 64px; top: 168px; bottom: 78px; }
+  .pageno {
+    position: absolute; right: 56px; bottom: 26px;
+    font-size: 22px; font-weight: 700; color: var(--red); letter-spacing: 1px;
+  }
+
+  /* nav */
+
+
+  /* ===== 1 cover ===== */
+  .cover {
+    background: #fff url("ppt-assets/cover.jpg") center / cover no-repeat;
+  }
+  .cover .main {
+    position: absolute; left: 80px; right: 80px; top: 300px;
+    text-align: center;
+  }
+  .cover h1 {
+    margin: 0; font-size: 84px; line-height: 1.15; font-weight: 700; color: var(--red);
+    letter-spacing: 2px;
+  }
+  .cover .sub {
+    margin: 96px 0 0; font-size: 30px; color: var(--ink); letter-spacing: 1px;
+  }
+
+  /* ===== 2 situation ===== */
+  .scene {
+    height: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 20px;
+  }
+  .sc {
+    background: #fff;
+    border: 1px solid #f0e4df;
+    padding: 16px 22px 16px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .sc::after {
+    content: "";
+    position: absolute; right: -30px; top: -36px;
+    width: 120px; height: 120px; border-radius: 60px;
+    border: 14px solid rgba(192,0,0,.06);
+    pointer-events: none;
+  }
+  .sc-h { display: flex; align-items: center; gap: 12px; }
+  .sc-h svg { width: 40px; height: 40px; flex: none; }
+  .sc-h b { font-size: 30px; letter-spacing: 1px; }
+  .sc-h em { margin-left: auto; font-style: normal; color: var(--red); font-weight: 700; font-size: 20px; letter-spacing: 1px; }
+  .sc p { margin: 8px 0 0; font-size: 23px; line-height: 1.5; color: var(--ink); }
+  .sc p.dim { color: #3e4650; margin-top: 6px; }
+  .sc-fig {
+    flex: 1;
+    margin-top: 14px;
+    min-height: 0;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    background:
+      repeating-linear-gradient(-18deg, transparent, transparent 6px, rgba(192,0,0,.07) 6px, rgba(192,0,0,.07) 7px),
+      #faf6f4;
+    border: 1px solid #f0e4df;
+  }
+  .sc-fig .mini { margin-top: 0; flex: 1; min-height: 0; }
+  .figcap { display: flex; gap: 8px; }
+  .figcap span {
+    flex: 1; text-align: center; font-size: 14px; color: var(--ink);
+    background: #fff; border-top: 2px solid var(--red); padding: 8px 2px;
+  }
+  .figcap span:nth-child(2) { border-top-color: #E04E2A; }
+  .figcap span:nth-child(3) { border-top-color: var(--gold); }
+  .bars { display: flex; align-items: flex-end; justify-content: space-around; height: 72px; padding: 0 12px; }
+  .bars i { display: block; width: 36px; background: linear-gradient(#E0A325, #C00000); }
+  .bars i:nth-child(1) { height: 46%; }
+  .bars i:nth-child(2) { height: 70%; }
+  .bars i:nth-child(3) { height: 100%; }
+  .cite { font-size: 20px; line-height: 1.4; color: var(--ink); background: #fff; padding: 6px 8px; }
+  .doms, .nodes, .tl, .states { display: flex; align-items: stretch; gap: 14px; height: 100%; }
+  .doms div, .nodes span, .tl div, .states div {
+    flex: 1; text-align: center; background: #faf6f4; border: 1px solid #f0e4df; padding: 12px 14px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .doms b, .tl b { display: block; font-size: 22px; color: var(--red); }
+  .doms div { text-align: left; justify-content: flex-start; }
+  .doms span, .tl span, .nodes span, .states span { display: block; font-size: 19px; color: var(--muted); margin-top: 4px; line-height: 1.4; }
+  .doms span { text-align: left; }
+  .nodes span { padding: 12px 8px; font-size: 21px; color: var(--ink); background: #faf6f4; display: flex; align-items: center; justify-content: center; }
+  .nodes i { flex: none; width: 28px; height: 2px; align-self: center; background: linear-gradient(90deg, var(--red), var(--gold)); }
+  .tl { gap: 8px; }
+  .tl div { padding: 12px 8px; }
+  .tl .tl-line {
+    flex: none; width: 22px; height: 2px; padding: 0; border: 0;
+    background: var(--gold); align-self: center;
+  }
+  .states .bad { background: #fff; }
+  .states .bad b { color: var(--muted); font-weight: 600; font-size: 21px; }
+  .states .good { background: var(--red); border-color: var(--red); }
+  .states .good b, .states .good span { color: #fff; }
+  .states b { display: block; font-size: 22px; }
+  .sjudge {
+    grid-column: 3;
+    grid-row: 1 / span 2;
+    background:
+      linear-gradient(165deg, rgba(192,0,0,.05) 0 1px, transparent 1px 14px),
+      linear-gradient(75deg, rgba(224,163,37,.08) 0 1px, transparent 1px 16px),
+      #fff;
+    border: 1px solid #f0e4df;
+    padding: 14px 14px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 0;
+  }
+  .sjudge h3 { margin: 0; font-size: 28px; letter-spacing: 2px; color: var(--red); }
+  .find { display: grid; grid-template-columns: 36px 1fr; gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid #f3e7e3; }
+  .find svg { width: 32px; height: 32px; margin-top: 2px; }
+  .find b { display: block; font-size: 24px; }
+  .find span { display: block; margin-top: 3px; font-size: 20px; color: #3e4650; line-height: 1.45; }
+  .policy {
+    background: var(--red); color: #fff; padding: 14px 14px 12px;
+    display: grid; grid-template-columns: 86px 1fr; gap: 12px; align-items: center;
+  }
+  .y2030 {
+    width: 86px; height: 86px; border: 1.5px solid rgba(255,255,255,.7); border-radius: 43px;
+    display: grid; place-items: center; text-align: center; line-height: 1.15;
+  }
+  .y2030 b { font-size: 22px; letter-spacing: 1px; }
+  .y2030 span { display: block; font-size: 15px; opacity: .85; }
+  .policy p { margin: 0; font-size: 20px; line-height: 1.45; }
+  .room-note { margin: 0; font-size: 20px; line-height: 1.45; color: #3e4650; }
+  .room {
+    display: grid; grid-template-columns: 0.85fr 1.4fr 1.05fr; gap: 8px;
+  }
+  .room div { background: #fff; border: 1px solid #f0e4df; text-align: center; padding: 8px 2px; }
+  .room b { display: block; font-size: 20px; color: var(--red); }
+  .room span { display: block; margin-top: 4px; font-size: 18px; color: var(--muted); white-space: nowrap; }
+
+  /* ===== 3 pains: four columns + red foot ===== */
+  .pains { height: 100%; display: flex; flex-direction: column; }
+  .pains .grid {
+    flex: 1; display: grid; grid-template-columns: repeat(4, 1fr); gap: 36px;
+    align-content: center; padding: 10px 8px 24px;
+  }
+  .pain { border-top: 8px solid var(--red); padding-top: 26px; }
+  .pain:nth-child(2) { border-top-color: #E04E2A; }
+  .pain:nth-child(3) { border-top-color: var(--gold); }
+  .pain:nth-child(4) { border-top-color: var(--red-deep); }
+  .pain b { display: block; font-size: 36px; letter-spacing: 2px; margin-bottom: 18px; }
+  .pain span { display: block; font-size: 18px; line-height: 1.6; color: #3e4650; }
+  .pains .foot {
+    height: 92px; background: var(--red); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px; letter-spacing: 1px;
+  }
+
+  /* ===== 4 position: red panel + spec list ===== */
+  .pos { height: 100%; display: grid; grid-template-columns: 620px 1fr; gap: 48px; }
+  .pos .side {
+    background: var(--red); color: #fff; padding: 56px 48px;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .pos .side .k { font-size: 20px; letter-spacing: 3px; opacity: .85; }
+  .pos .side h3 { margin: 18px 0 28px; font-size: 48px; line-height: 1.25; font-weight: 700; letter-spacing: 1px; }
+  .pos .side li { font-size: 22px; line-height: 1.7; list-style: none; }
+  .pos .side ul { margin: 0; padding: 0; }
+  .pos .side .lead { margin: 22px 0 0; font-size: 16px; line-height: 1.6; opacity: .95; }
+  .pos .specs { display: flex; flex-direction: column; justify-content: center; }
+  .spec { display: grid; grid-template-columns: 140px 1fr; align-items: center; border-bottom: 1px solid var(--line); min-height: 120px; }
+  .spec em { font-style: normal; color: var(--red); font-size: 22px; font-weight: 700; letter-spacing: 4px; }
+  .spec b { display: block; font-size: 26px; font-weight: 600; }
+  .spec small { display: block; margin-top: 6px; font-size: 16px; color: var(--muted); font-weight: 400; line-height: 1.45; }
+
+  /* ===== 5 architecture ===== */
+  .arch { height: 100%; display: flex; flex-direction: column; padding-top: 8px; }
+  .principles { display: flex; gap: 22px; margin-bottom: 28px; }
+  .principles span {
+    flex: 1; text-align: center; font-size: 26px; font-weight: 700; color: var(--red);
+    border: 1.5px solid var(--red); padding: 14px 0; letter-spacing: 3px; background: #fff;
+  }
+  .layers { flex: 1; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; }
+  .layer { display: grid; grid-template-columns: 280px 1fr; min-height: 108px; align-items: stretch; }
+  .layer .name {
+    display: grid; place-items: center; color: #fff; font-size: 30px; font-weight: 700; letter-spacing: 3px;
+  }
+  .layer .desc {
+    display: flex; flex-direction: column; justify-content: center; padding: 14px 28px 14px 36px;
+    font-size: 22px; background: #faf7f4; letter-spacing: 0; line-height: 1.45;
+  }
+  .layer .desc small { display: block; margin-top: 4px; font-size: 16px; color: var(--muted); }
+  .layer:nth-child(1) .name { background: #8E1212; }
+  .layer:nth-child(2) .name { background: var(--red); }
+  .layer:nth-child(3) .name { background: #D3542A; }
+  .layer:nth-child(4) .name { background: #C48812; }
+  .techs {
+    margin-top: 22px; display: flex; justify-content: space-between;
+    border-top: 1px solid var(--line); padding-top: 18px;
+  }
+  .techs span { font-size: 22px; color: var(--muted); }
+  .techs span::before { content: ""; display: inline-block; width: 8px; height: 8px; background: var(--gold); margin-right: 10px; vertical-align: 2px; }
+
+  /* ===== merged positioning + architecture ===== */
+  .fusion { height: 100%; display: flex; flex-direction: column; gap: 14px; }
+  .fusion .who { font-size: 18px; line-height: 1.55; color: #3e4650; margin: 0; }
+  .fusion .who b { color: var(--red); }
+  .facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .fact { background: #faf6f4; border-top: 4px solid var(--red); padding: 12px 14px 14px; }
+  .fact:nth-child(2) { border-top-color: #E04E2A; }
+  .fact:nth-child(3) { border-top-color: var(--gold); }
+  .fact:nth-child(4) { border-top-color: var(--red-deep); }
+  .fact em { font-style: normal; color: var(--red); font-size: 15px; font-weight: 700; letter-spacing: 2px; }
+  .fact b { display: block; margin: 6px 0 4px; font-size: 20px; }
+  .fact span { display: block; font-size: 15px; line-height: 1.5; color: #3e4650; }
+  .fusion .principles { margin-bottom: 0; }
+  .fusion .principles span { font-size: 20px; padding: 10px 8px; letter-spacing: 1px; }
+  .fusion .principles small { display: block; margin-top: 4px; font-size: 14px; font-weight: 400; color: #3e4650; letter-spacing: 0; }
+  .fusion .layers { gap: 10px; }
+  .fusion .layer { min-height: 0; }
+  .fusion .layer .name { font-size: 24px; }
+  .fusion .layer .desc { font-size: 18px; padding: 10px 20px 10px 28px; }
+  .fusion .techs { margin-top: 0; padding-top: 12px; }
+
+  /* ===== 6 capabilities ===== */
+  .cap { height: 100%; display: flex; flex-direction: column; justify-content: flex-start; padding-top: 36px; }
+  .cap .lead { font-size: 26px; color: var(--ink); padding: 0 4px 28px; }
+  .cap .lead b { color: var(--red); margin-right: 16px; font-size: 28px; }
+  .outs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .out { background: #fbf8f6; padding: 32px 32px 36px; border-top: 6px solid var(--red); }
+  .out:nth-child(2) { border-top-color: #E04E2A; }
+  .out:nth-child(3) { border-top-color: var(--gold); }
+  .out i { font-style: normal; font-size: 18px; letter-spacing: 3px; color: var(--gold); font-weight: 700; }
+  .out h3 { margin: 16px 0 18px; font-size: 40px; color: var(--red); letter-spacing: 2px; }
+  .out p { margin: 0; font-size: 18px; line-height: 1.65; color: #3e4650; }
+  .pair {
+    margin-top: 22px; display: grid; grid-template-columns: 1fr 1fr;
+    border-top: 1px solid var(--line);
+  }
+  .pair div { padding: 20px 8px 0; font-size: 18px; line-height: 1.55; color: #3e4650; }
+  .pair div + div { border-left: 1px solid var(--line); padding-left: 28px; }
+  .pair b { color: var(--red); margin-right: 14px; }
+
+  /* ===== 7 flow ===== */
+  .flow { height: 100%; display: flex; flex-direction: column; justify-content: center; }
+  .railwrap { position: relative; padding: 0 10px; }
+  .rail {
+    position: absolute; left: calc(100% / 10); width: calc(100% * 8 / 10);
+    top: 40px; height: 12px; object-fit: fill;
+  }
+  .steps { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); }
+  .step { text-align: center; padding: 0 8px; }
+  .step .dot {
+    width: 92px; height: 92px; margin: 0 auto 22px; border-radius: 46px;
+    background: #fff; border: 6px solid #fff; outline: 3px solid var(--red);
+    color: var(--red); font-size: 32px; font-weight: 700;
+    display: grid; place-items: center; position: relative; z-index: 1;
+  }
+  .step:nth-child(even) .dot { background: var(--red); color: #fff; outline-color: var(--gold); }
+  .step h3 { margin: 0 0 10px; font-size: 28px; letter-spacing: 1px; }
+  .step p { margin: 0; font-size: 16px; color: #3e4650; line-height: 1.5; }
+  .flow .note {
+    margin-top: 64px; text-align: center; font-size: 26px; color: var(--ink); letter-spacing: 1px;
+  }
+  .flow .note b { color: var(--red); font-weight: 700; }
+
+  /* ===== 8 outcomes ===== */
+  .effects { height: 100%; display: flex; flex-direction: column; justify-content: space-between; padding: 10px 0 6px; }
+  .ef { display: grid; grid-template-columns: 420px 1fr; align-items: center; min-height: 168px; padding: 0 36px; }
+  .ef h3 { margin: 0; font-size: 34px; letter-spacing: 1px; }
+  .ef p { margin: 0; font-size: 20px; color: #3e4650; line-height: 1.55; }
+  .ef:nth-child(2) { background: var(--red); }
+  .ef:nth-child(2) h3, .ef:nth-child(2) p { color: #fff; }
+  .ef:nth-child(1), .ef:nth-child(3) { background: #faf7f4; }
+  .marks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; padding-top: 4px; }
+  .marks div { background: #fff; border-top: 3px solid var(--red); padding: 12px 4px 0; }
+  .marks b { display: block; font-size: 22px; color: var(--red); letter-spacing: 2px; margin-bottom: 6px; }
+  .marks span { display: block; font-size: 16px; line-height: 1.5; color: #3e4650; }
+
+  /* ===== pains with diagrams ===== */
+  .need { height: 100%; display: flex; flex-direction: column; gap: 16px; }
+  .ng { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 16px; }
+  .nc {
+    min-height: 0; background: #fff; border: 1px solid #f0e4df; overflow: hidden;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 22px 48px 20px;
+  }
+  .nc svg { width: 92px; height: 92px; }
+  .nc .rule { width: 46px; height: 3px; margin: 14px 0 12px; background: var(--red); }
+  .nc:nth-child(2) .rule { background: #E04E2A; }
+  .nc:nth-child(3) .rule { background: var(--gold); }
+  .nc:nth-child(4) .rule { background: var(--red-deep); }
+  .nc em { font-style: normal; font-size: 14px; font-weight: 700; color: var(--red); letter-spacing: 1px; }
+  .nc b { display: block; font-size: 36px; letter-spacing: 1px; }
+  .nc p { margin: 12px 0 0; font-size: 26px; line-height: 1.55; color: #3e4650; }
+  .need-foot {
+    height: 60px; flex: none; background: var(--red); color: #fff;
+    display: flex; align-items: center; justify-content: center; font-size: 26px; letter-spacing: 1px; }
+  }
+  .d-exp { width: 460px; height: 150px; display: flex; align-items: flex-end; gap: 12px; }
+  .d-exp svg { flex: none; margin-bottom: 8px; }
+  .d-exp .docs { flex: 1; height: 100%; display: flex; align-items: flex-end; gap: 8px; }
+  .d-exp .docs div { flex: 1; background: #fff; border: 1.5px solid var(--red); padding: 8px 6px; display: flex; flex-direction: column; gap: 7px; }
+  .d-exp .docs div:nth-child(2) { border-color: #E04E2A; }
+  .d-exp .docs div:nth-child(3) { border-color: #C48812; }
+  .d-exp .docs b { font-size: 13px; color: var(--red); text-align: center; }
+  .d-exp .docs span { display: block; height: 4px; background: #f0d2cb; }
+  .d-exp .docs div:nth-child(2) span { width: 72%; background: #f3d2c4; }
+  .d-exp .docs div:nth-child(3) span { width: 48%; background: #f0e0bc; }
+  .d-split { width: 100%; display: flex; align-items: center; gap: 8px; }
+  .d-split div { flex: 1; background: #fff; border: 1.5px dashed #C00000; text-align: center; padding: 22px 4px; }
+  .d-split b { display: block; font-size: 20px; color: var(--red); white-space: nowrap; }
+  .d-split small { display: block; margin-top: 6px; font-size: 13px; color: #5e6772; }
+  .d-split em { font-style: normal; color: var(--gold); font-size: 26px; font-weight: 700; line-height: 1; }
+  .d-miss { width: 100%; display: flex; align-items: center; }
+  .d-miss div { flex: 1; text-align: center; background: #fff; border: 1.5px solid var(--red); padding: 16px 8px; color: var(--red); }
+  .d-miss b { display: block; font-size: 18px; white-space: nowrap; }
+  .d-miss small { display: block; margin-top: 4px; font-size: 12px; }
+  .d-miss i { width: 14px; height: 2px; background: var(--gold); flex: none; }
+  .d-miss i.dash { background: transparent; border-top: 2px dashed #c5cad3; height: 0; }
+  .d-miss .off { border-style: dashed; border-color: #c5cad3; color: #8b939e; background: transparent; }
+  .d-miss .man { background: var(--red); color: #fff; border-color: var(--red); }
+  .d-load { width: 220px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .d-load span { background: #fff; border: 1.5px solid var(--red); text-align: center; padding: 9px 0; font-size: 15px; font-weight: 700; }
+  .d-load span:nth-child(1) { width: 100%; }
+  .d-load span:nth-child(2) { width: 82%; border-color: #E04E2A; }
+  .d-load span:nth-child(3) { width: 64%; border-color: #C48812; }
+  .d-load b { margin-top: 4px; width: 48%; background: var(--red); color: #fff; text-align: center; font-size: 14px; padding: 8px 0; }
+
+  /* ===== positioning + architecture ===== */
+  .archx { height: 100%; display: grid; grid-template-columns: 600px 1fr; gap: 22px; }
+  .loc {
+    min-height: 0; display: flex; flex-direction: column;
+    background:
+      linear-gradient(165deg, rgba(192,0,0,.05) 0 1px, transparent 1px 14px),
+      #fff;
+    border: 1px solid #f0e4df; padding: 20px 20px 16px;
+  }
+  .loc .k { color: var(--red); font-weight: 700; letter-spacing: 3px; font-size: 20px; }
+  .loc h3 { margin: 8px 0 10px; font-size: 34px; letter-spacing: 1px; }
+  .loc .lead { margin: 0; font-size: 24px; line-height: 1.55; color: #3e4650; }
+  .loc .lead b { color: var(--red); }
+  .board { flex: 1; min-height: 0; margin-top: 18px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+  .screen-ico { text-align: center; }
+  .screen-ico svg { width: 84px; height: 64px; }
+  .screen-ico b { display: block; margin-top: 8px; font-size: 24px; letter-spacing: 2px; }
+  .screen-ico span { display: block; margin-top: 4px; font-size: 20px; color: #5e6772; }
+  .cast { width: 100%; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .cast div { text-align: center; }
+  .cast svg { width: 64px; height: 64px; }
+  .cast b { display: block; margin-top: 8px; font-size: 22px; }
+  .cast span { display: block; margin-top: 2px; font-size: 20px; color: #5e6772; }
+  .screenbox { background: #fff; border: 1px solid #eadfd8; box-shadow: 0 10px 0 rgba(192,0,0,.05); }
+  .sbar { background: var(--red); color: #fff; text-align: center; letter-spacing: 3px; font-size: 16px; padding: 8px 0; }
+  .panes { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .panes div { text-align: center; padding: 20px 6px 18px; border-right: 1px solid #f3e6e1; }
+  .panes div:last-child { border-right: 0; }
+  .panes b { display: block; color: var(--red); font-size: 16px; }
+  .panes span { display: block; margin-top: 4px; font-size: 13px; color: #5e6772; }
+  .roles3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .roles3 div { background: #faf6f4; border: 1px solid #f0e4df; text-align: center; padding: 16px 6px 14px; }
+  .roles3 i {
+    display: grid; place-items: center; width: 40px; height: 40px; margin: 0 auto 8px;
+    border-radius: 20px; border: 1.5px solid var(--red); color: var(--red); font-style: normal; font-weight: 700;
+  }
+  .roles3 .host { background: #fff; border-color: var(--red); }
+  .roles3 .host i { background: var(--red); color: #fff; }
+  .roles3 b { display: block; font-size: 17px; }
+  .roles3 span { display: block; margin-top: 4px; font-size: 13px; color: #5e6772; line-height: 1.4; }
+  .inbits { display: flex; gap: 8px; }
+  .inbits span { flex: 1; text-align: center; border: 1px solid var(--red); color: var(--red); font-size: 15px; padding: 7px 0; background: #fff; }
+  .stack { min-height: 0; display: flex; flex-direction: column; gap: 12px; }
+  .prins { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .prins div { border: 1.5px solid var(--red); background: #fff; padding: 10px 12px 11px; }
+  .prins b { display: block; color: var(--red); font-size: 24px; letter-spacing: 1px; }
+  .prins span { display: block; margin-top: 4px; font-size: 20px; line-height: 1.45; color: #3e4650; }
+  .lvls { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; position: relative; }
+  .lvls::before {
+    content: ""; position: absolute; left: 28px; top: 22px; bottom: 22px; width: 2px;
+    background: linear-gradient(#C00000, #E0A325);
+  }
+  .lvl {
+    flex: 1; display: grid; grid-template-columns: 56px 1fr; gap: 8px; align-items: center;
+    background: #faf6f4; border: 1px solid #f0e4df; padding: 8px 14px 8px 8px;
+  }
+  .lvl .n {
+    width: 40px; height: 40px; margin-left: 4px; border-radius: 20px; background: var(--red); color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 14px; position: relative; z-index: 1;
+  }
+  .lvl:nth-child(2) .n { background: #E04E2A; }
+  .lvl:nth-child(3) .n { background: #C48812; }
+  .lvl:nth-child(4) .n { background: #8E1212; }
+  .lvl > div:last-child { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 14px; align-items: center; }
+  .lvl h3 { margin: 0 0 4px; font-size: 26px; letter-spacing: 1px; }
+  .lvl p { margin: 0; font-size: 22px; line-height: 1.45; color: #3e4650; }
+  .lvl .mk { width: 52px; height: 52px; }
+  .caps { display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+  .caps span {
+    display: block; font-size: 18px; font-weight: 700; color: var(--red); letter-spacing: 0;
+    background: #fff; border: 1.5px solid var(--red); padding: 6px 10px; text-align: center; white-space: nowrap;
+  }
+
+  /* ===== capability + flow ===== */
+  .work {
+    height: 100%;
+    display: grid;
+    grid-template-rows: 0.9fr 1.15fr auto;
+    row-gap: 24px;
+    align-items: stretch;
+  }
+  .blk { display: flex; flex-direction: column; justify-content: center; gap: 16px; min-height: 0; }
+  .work .trio { flex: none; }
+  .kicker {
+    flex: none; display: flex; align-items: center; gap: 12px;
+    margin: 0; font-size: 22px; font-weight: 700; color: var(--red); letter-spacing: 2px;
+  }
+  .kicker::before { content: ""; width: 8px; height: 22px; background: var(--red); }
+  .kicker::after { content: ""; flex: 1; height: 1px; background: #f0e4df; }
+  .wflow { position: relative; flex: none; }
+  .wflow .rail {
+    position: absolute; left: calc(100% / 10); width: calc(100% * 8 / 10);
+    top: 27px; height: 3px; border-radius: 2px;
+    background: linear-gradient(90deg, #C00000 0%, #E0A325 50%, #C00000 100%);
+  }
+  .wsteps { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); }
+  .wstep { text-align: center; padding: 0 8px; }
+  .wdot {
+    width: 58px; height: 58px; margin: 0 auto 8px; border-radius: 29px;
+    background: #fff; border: 5px solid #fff; outline: 3px solid var(--red);
+    color: var(--red); font-size: 22px; font-weight: 700;
+    display: grid; place-items: center; position: relative; z-index: 1;
+  }
+  .wstep:nth-child(even) .wdot { background: var(--red); color: #fff; outline-color: var(--gold); }
+  .wstep h3 { margin: 0 0 4px; font-size: 26px; letter-spacing: 1px; }
+  .wstep p { margin: 0; font-size: 21px; line-height: 1.4; color: #3e4650; }
+  .engine {
+    flex: none; display: grid; grid-template-columns: 150px 1fr; gap: 8px 18px; align-items: center;
+    background: #faf6f4; border-left: 6px solid var(--red); padding: 12px 18px;
+  }
+  .engine b { font-size: 30px; color: var(--red); letter-spacing: 1px; }
+  .engine p { margin: 0; font-size: 23px; line-height: 1.5; color: #3e4650; }
+  .work .trio { flex: none; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; align-items: center; }
+  .ocard {
+    min-height: 0; background: #fff; padding: 8px 28px 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+  }
+  .ocard svg { width: 86px; height: 86px; }
+  .ocard .rule { width: 42px; height: 3px; margin: 12px 0 10px; background: var(--red); }
+  .ocard:nth-child(2) .rule { background: #E04E2A; }
+  .ocard:nth-child(3) .rule { background: var(--gold); }
+  .ocard h3 { margin: 0 0 10px; font-size: 34px; color: var(--red); letter-spacing: 1px; }
+  .ocard p { margin: 0; font-size: 24px; line-height: 1.55; color: #3e4650; }
+  .support { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .support div { background: #fff; border: 1px solid #f0e4df; border-top: 3px solid var(--red); padding: 14px 18px; font-size: 22px; line-height: 1.5; color: #3e4650; }
+  .support div + div { border-top-color: var(--gold); }
+  .support b { color: var(--red); margin-right: 10px; }
+
+  /* ===== advantages + outcomes ===== */
+  .gain { height: 100%; display: flex; flex-direction: column; gap: 36px; }
+  .gain section { min-height: 0; display: flex; flex-direction: column; gap: 16px; }
+  .gain section:first-child { flex: 1 1 auto; }
+  .gain .effects {
+    flex: 0 0 auto; height: auto; justify-content: flex-start; gap: 16px; padding: 0;
+  }
+  .gain .row {
+    flex: 1 1 auto; min-height: 0;
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: minmax(0, 1fr); gap: 22px;
+    align-items: stretch;
+  }
+  .gain article {
+    height: 100%; min-height: 0; background: #fff; border: 1px solid #f0e4df; border-top: 5px solid var(--red);
+    padding: 20px 28px 18px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; overflow: hidden;
+  }
+  .gain article:nth-child(2) { border-top-color: #E04E2A; }
+  .gain article:nth-child(3) { border-top-color: var(--gold); }
+  .gain article > svg { width: 72px; height: 72px; }
+  .gain article .rule { width: 42px; height: 3px; margin: 10px 0 8px; background: var(--red); }
+  .gain article:nth-child(2) .rule { background: #E04E2A; }
+  .gain article:nth-child(3) .rule { background: var(--gold); }
+  .gain article h3 { margin: 0; font-size: 32px; letter-spacing: 1px; }
+  .gain article > p { margin: 10px 0 0; font-size: 22px; line-height: 1.55; color: #3e4650; }
+  .effects .band {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    background: #faf6f4; border-left: 6px solid var(--red); padding: 22px 6px;
+  }
+  .effects .band div { padding: 2px 28px; }
+  .effects .band div + div { border-left: 1px solid #eadfd8; }
+  .effects .band b { display: block; font-size: 26px; letter-spacing: 1px; color: var(--red); }
+  .effects .band span { display: block; margin-top: 8px; font-size: 22px; line-height: 1.55; color: #3e4650; }
+  .gfig {
+    flex: 1; margin-top: 12px; display: flex; align-items: stretch; gap: 10px;
+    background:
+      repeating-linear-gradient(-18deg, transparent, transparent 7px, rgba(192,0,0,.05) 7px, rgba(192,0,0,.05) 8px),
+      #faf6f4;
+    border: 1px solid #f0e4df; padding: 12px;
+  }
+  .gfig div {
+    flex: 1; background: #fff; border: 1px solid #eadfd8; border-top: 3px solid var(--red);
+    padding: 12px 10px; display: flex; flex-direction: column; justify-content: center;
+  }
+  .gfig div:nth-child(2) { border-top-color: #E04E2A; }
+  .gfig div:nth-child(3), .gfig .to { border-top-color: var(--gold); }
+  .gfig b { display: block; font-size: 18px; color: var(--red); text-align: center; }
+  .gfig ul { margin: 8px 0 0; padding: 0; list-style: none; }
+  .gfig li { font-size: 14px; line-height: 1.55; color: #3e4650; padding-left: 12px; position: relative; }
+  .gfig li::before { content: ""; position: absolute; left: 0; top: 0.55em; width: 5px; height: 5px; background: var(--gold); }
+  .gfig i { width: 26px; height: 3px; background: linear-gradient(90deg, var(--red), var(--gold)); flex: none; align-self: center; }
+  .mark h3 { margin: 0; font-size: 34px; color: var(--red); letter-spacing: 2px; }
+  .mpills { margin-top: 16px; display: flex; gap: 8px; }
+  .mpills span { flex: 1; text-align: center; background: #fff; border-top: 2px solid var(--red); padding: 12px 4px; font-size: 15px; }
+
+  /* ===== 9 demo ===== */
+  .demo { height: 100%; display: flex; align-items: center; justify-content: center; background: #111; }
+  .demo video { width: 100%; height: 100%; object-fit: contain; background: #111; }
+
+  /* ===== 10 thanks ===== */
+  .thanks { background: #fff; }
+  .thanks .logo-lg { position: absolute; left: 56px; top: 28px; height: 92px; width: auto; }
+  .thanks .ribbon {
+    position: absolute; right: 0; bottom: 0; width: 980px; height: auto; pointer-events: none;
+  }
+  .thanks .center {
+    position: absolute; left: 80px; top: 340px; width: 1100px;
+  }
+  .thanks h1 {
+    margin: 0; font-size: 108px; color: var(--red); font-weight: 700; letter-spacing: 18px;
+  }
+  .thanks .line { width: 180px; height: 8px; margin: 28px 0; object-fit: cover; display: block; }
+  .thanks .who { font-size: 32px; letter-spacing: 2px; }
+  .thanks .contact { margin-top: 40px; font-size: 26px; color: var(--ink); display: flex; align-items: flex-end; gap: 12px; }
+  .thanks .contact b { font-weight: 600; }
+  .thanks .contact i {
+    display: inline-block; width: 200px; border-bottom: 1.5px solid #c5cad3; margin-right: 28px; height: 28px;
+  }
+  .thanks .pageno { display: none; }
+</style>
+</head>
+<body>
+<div id="viewport">
+  <div id="deck">
+
+    <section class="slide cover on">
+      <div class="main">
+        <h1>矛盾纠纷智能调解助手</h1>
+        <p class="sub">把握争议、推进调解，提升基层矛盾纠纷能力</p>
+      </div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>基层矛盾化解面临的形势</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="scene">
+          <article class="sc">
+            <div class="sc-h">
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><circle cx="20" cy="20" r="15" stroke="#C00000" stroke-width="1.6"/><path d="M20 8v24M8 20h24M12 12l16 16M28 12L12 28" stroke="#E0A325" stroke-width="1.2"/></svg>
+              <b>纠纷领域更复杂</b><em>01</em>
+            </div>
+            <p>经济、民事、家庭等领域的问题日益复杂化，合同赔偿、邻里租赁、婚姻赡养等纠纷相互交织。</p>
+            <p class="dim">调解员既要具备法律知识，又要依靠复合经验，<br>一人承担事实梳理、法律释明和方案形成，专业性与公平性难以稳定保障。</p>
+            <div class="sc-fig">
+              <div class="mini doms">
+                <div><b>经济</b><span>合同履行、损害赔偿、劳动报酬等争议持续增多。</span></div>
+                <div><b>民事</b><span>邻里关系、房屋租赁、财物损害是基层调解的常见类型。</span></div>
+                <div><b>家庭</b><span>婚姻、赡养、抚养等问题，更需要当面把事实和诉求说清。</span></div>
+              </div>
+            </div>
+          </article>
+          <article class="sc">
+            <div class="sc-h">
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><rect x="7" y="10" width="26" height="18" rx="2" stroke="#C00000" stroke-width="1.6"/><path d="M12 28v3h16v-3M16 16h8M16 21h5" stroke="#E0A325" stroke-width="1.4"/></svg>
+              <b>技术条件已形成</b><em>02</em>
+            </div>
+            <p>互联网、大数据和人工智能的发展，为在线纠纷解决提供了技术支撑，使智能化、自动化的纠纷处理成为可能。</p>
+            <p class="dim">大数据汇聚案件与法规信息，AI模型识别纠纷类型、归集关键要点，并辅助形成处理方案。</p>
+            <div class="sc-fig">
+              <div class="mini nodes">
+                <span>互联网</span><i></i><span>大数据</span><i></i><span>AI模型</span>
+              </div>
+              <div class="cite">互联网汇聚信息，大数据支撑分析，AI模型识别类型并生成方案。</div>
+            </div>
+          </article>
+          <article class="sc">
+            <div class="sc-h">
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M12 8h16v24H12z" stroke="#C00000" stroke-width="1.6"/><path d="M16 14h8M16 19h8M16 24h5" stroke="#E0A325" stroke-width="1.4"/></svg>
+              <b>政策路径已明确</b><em>03</em>
+            </div>
+            <p>2022年12月9日，最高人民法院发布《关于规范和加强人工智能司法应用的意见》，明确人工智能司法应用的辅助原则。</p>
+            <p class="dim">意见提出到2030年建成具有规则引领和应用示范效应的司法人工智能技术应用和理论体系。加强人工智能在调解中的应用，是数字化法治和基层治理现代化的共同要求。</p>
+            <div class="sc-fig">
+              <div class="mini tl">
+                <div><b>2022</b><span>意见发布，明确辅助原则</span></div>
+                <div class="tl-line"></div>
+                <div><b>辅助</b><span>智能贯穿调解全过程</span></div>
+                <div class="tl-line"></div>
+                <div><b>2030</b><span>建成应用和理论体系</span></div>
+              </div>
+            </div>
+          </article>
+          <article class="sc">
+            <div class="sc-h">
+              <svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="M8 20h10M22 20h10" stroke="#C00000" stroke-width="1.6"/><circle cx="20" cy="20" r="3" stroke="#E0A325" stroke-width="1.6"/><path d="M14 12l-4 8 4 8M26 12l4 8-4 8" stroke="#C00000" stroke-width="1.4"/></svg>
+              <b>调解融合仍不足</b><em>04</em>
+            </div>
+            <p>人民法院在线调解平台，以及地方的线上多元化解平台、智慧云调解，多由调解员依据当事人提供的事实和材料进行人工调解。</p>
+            <p class="dim">智能化主要体现在线上送达、线上调解等便利手段，人工智能尚未实质参与纠纷解决过程。</p>
+            <div class="sc-fig">
+              <div class="mini states">
+                <div class="bad"><b>当前</b><span>线上流转为主，实质调解仍由人工完成</span></div>
+                <div class="good"><b>所需</b><span>智能贯穿调解过程，并实质参与方案形成</span></div>
+              </div>
+              <div class="cite">事实梳理、法律释明和方案形成仍主要靠人工完成，便利手段替代不了实质参与。</div>
+            </div>
+          </article>
+        </div>
+      </div>
+      <div class="pageno">02</div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>当前痛点</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="need">
+          <div class="ng">
+            <article class="nc">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="44" cy="26" r="14" fill="#C00000"/><path d="M16 74c4-20 12-30 28-30s24 10 28 30" fill="#C00000"/></svg>
+              <i class="rule"></i>
+              <b>经验依赖</b>
+              <p>调解依赖法律知识，也依赖复合经验。基层解纷长期以个人经验为主，方案的一致性、专业性与公平性难以稳定保障。</p>
+            </article>
+            <article class="nc">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="24" cy="30" r="14" fill="#C00000"/><circle cx="64" cy="26" r="11" fill="#E04E2A"/><circle cx="46" cy="62" r="14" fill="#E0A325"/></svg>
+              <i class="rule"></i>
+              <b>资源分散</b>
+              <p>法条对照、类案查找、要点归纳分散进行，重复劳动较多，优质解纷资源难以高效配置和共享。</p>
+            </article>
+            <article class="nc">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><rect x="16" y="18" width="56" height="40" rx="4" fill="none" stroke="#C00000" stroke-width="3"/><path d="M32 70h24" stroke="#C00000" stroke-width="3" stroke-linecap="round"/><circle cx="44" cy="38" r="8" fill="none" stroke="#E0A325" stroke-width="2.4" stroke-dasharray="3 3"/></svg>
+              <i class="rule"></i>
+              <b>智能缺位</b>
+              <p>现有在线调解多由调解员依据上传材料开展人工调解。智能化主要体现在线上流转，尚未实质参与纠纷解决过程。</p>
+            </article>
+            <article class="nc">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><circle cx="30" cy="26" r="10" fill="#C00000"/><path d="M12 70c2-16 8-24 18-24s16 8 18 24" fill="#C00000"/><circle cx="60" cy="32" r="8" fill="#E0A325"/><path d="M46 70c1.6-12 6-18 14-18s12.4 6 14 18" fill="#E0A325"/></svg>
+              <i class="rule"></i>
+              <b>力量有限</b>
+              <p>事实梳理、法律释明和方案形成占用大量基层力量，难以适应群众对便捷、规范化解纠纷的需求。</p>
+            </article>
+          </div>
+          <div class="need-foot">基层解纷长期依赖个人经验，优质资源难以共享，智能化尚未实质参与纠纷解决，基层力量难以适应便捷、规范化需求</div>
+        </div>
+      </div>
+      <div class="pageno">03</div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>系统定位与架构</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="archx">
+          <aside class="loc">
+            <div class="k">系统定位</div>
+            <h3>调解室三方同屏使用</h3>
+            <p class="lead">面向乡镇、村社调解室，供<b>申请人、被申请人、调解员</b>共同使用。双方以语音、文字多轮阐述后，系统在大屏上给出调解建议、法律法规依据和相似案例。</p>
+            <div class="board">
+              <div class="screen-ico">
+                <svg viewBox="0 0 88 64" aria-hidden="true"><rect x="4" y="4" width="80" height="48" rx="4" fill="#C00000"/><rect x="12" y="12" width="18" height="32" rx="2" fill="#fff"/><rect x="35" y="12" width="18" height="32" rx="2" fill="#fff" opacity=".85"/><rect x="58" y="12" width="18" height="32" rx="2" fill="#E0A325"/></svg>
+                <b>调解室大屏</b>
+                <span>调解建议 · 法律法规 · 相似案例</span>
+              </div>
+              <div class="cast">
+                <div>
+                  <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="16" r="8" fill="#C00000"/><path d="M14 52c2-14 8-20 18-20s16 6 18 20" fill="#C00000"/></svg>
+                  <b>申请人</b><span>阐述诉求</span>
+                </div>
+                <div>
+                  <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="16" r="8" fill="#E0A325"/><path d="M14 52c2-14 8-20 18-20s16 6 18 20" fill="#C00000"/></svg>
+                  <b>调解员</b><span>组织现场</span>
+                </div>
+                <div>
+                  <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="16" r="8" fill="#E04E2A"/><path d="M14 52c2-14 8-20 18-20s16 6 18 20" fill="#E04E2A"/></svg>
+                  <b>被申请人</b><span>阐述诉求</span>
+                </div>
+              </div>
+            </div>
+          </aside>
+          <div class="stack">
+            <div class="prins">
+              <div><b>应用场景化</b><span>上层承接调解室场景，<br>向下调用智能与知识。</span></div>
+              <div><b>能力服务化</b><span>理解、生成和知识做成服务，<br>按一场纠纷调用。</span></div>
+              <div><b>技术组件化</b><span>交互、认知、知识与保障分组件，<br>组合支撑上层。</span></div>
+            </div>
+            <div class="lvls">
+              <div class="lvl">
+                <div class="n">01</div>
+                <div>
+                  <svg class="mk" viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="8" width="36" height="28" rx="3" fill="#C00000"/><rect x="10" y="12" width="8" height="20" fill="#fff"/><rect x="20" y="12" width="8" height="20" fill="#fff" opacity=".75"/><rect x="30" y="12" width="8" height="20" fill="#E0A325"/></svg>
+                  <div><h3>场景应用</h3><p>承接语音、文字阐述，三方同屏统览过程与三项结果。</p></div>
+                  <div class="caps"><span>多模态交互</span></div>
+                </div>
+              </div>
+              <div class="lvl">
+                <div class="n">02</div>
+                <div>
+                  <svg class="mk" viewBox="0 0 48 48" aria-hidden="true"><rect x="10" y="12" width="28" height="22" rx="6" fill="#C00000"/><circle cx="19" cy="22" r="2.4" fill="#fff"/><circle cx="29" cy="22" r="2.4" fill="#fff"/><path d="M24 12V6" stroke="#E0A325" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="5" r="2" fill="#E0A325"/></svg>
+                  <div><h3>智能能力</h3><p>提取关键信息，理清因果链条，识别解决路径并形成调解方案，动态调整推荐策略。</p></div>
+                  <div class="caps"><span>自然语言认知引擎</span><span>自主反馈</span></div>
+                </div>
+              </div>
+              <div class="lvl">
+                <div class="n">03</div>
+                <div>
+                  <svg class="mk" viewBox="0 0 48 48" aria-hidden="true"><ellipse cx="24" cy="14" rx="14" ry="5" fill="#C00000"/><path d="M10 14v16c0 3 6 5 14 5s14-2 14-5V14c0 3-6 5-14 5S10 17 10 14z" fill="#C00000"/><circle cx="36" cy="32" r="6" fill="#E0A325"/><circle cx="36" cy="32" r="2.2" fill="#fff"/></svg>
+                  <div><h3>知识数据</h3><p>融合国家法律法规、司法行政案例，以及调解案例和预案。</p></div>
+                  <div class="caps"><span>法律知识图谱</span></div>
+                </div>
+              </div>
+              <div class="lvl">
+                <div class="n">04</div>
+                <div>
+                  <svg class="mk" viewBox="0 0 48 48" aria-hidden="true"><path d="M24 6l14 6v12c0 9-6 14-14 18C16 38 10 33 10 24V12z" fill="#C00000"/><path d="M18 24l4 4 8-9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                  <div><h3>基础保障</h3><p>保障数据安全与访问可控，兼顾响应性能和稳定运行，按场景调用并留痕回溯。</p></div>
+                  <div class="caps"><span>数据安全</span><span>性能保障</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pageno">04</div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>纠纷智调</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="work">
+          <div class="blk">
+            <h3 class="kicker">调解流程</h3>
+            <div class="wflow">
+              <div class="rail"></div>
+              <div class="wsteps">
+                <div class="wstep"><div class="wdot">1</div><h3>诉求汇聚</h3><p>双方以语音或文字，分多轮阐述</p></div>
+                <div class="wstep"><div class="wdot">2</div><h3>调前预分析</h3><p>采集案件背景，预先匹配法规</p></div>
+                <div class="wstep"><div class="wdot">3</div><h3>要素拆分</h3><p>提取时间、地点、人物和类型</p></div>
+                <div class="wstep"><div class="wdot">4</div><h3>焦点研判</h3><p>归纳争议焦点，理清因果逻辑</p></div>
+                <div class="wstep"><div class="wdot">5</div><h3>智能推荐</h3><p>生成建议、法条和相似案例</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="blk grow">
+            <h3 class="kicker">三项能力</h3>
+            <div class="trio">
+            <article class="ocard">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><rect x="24" y="12" width="40" height="52" rx="3" fill="#C00000"/><path d="M34 28h20M34 38h20M34 48h12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/><circle cx="62" cy="58" r="12" fill="#E0A325"/><path d="M56 58l4 4 8-9" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <i class="rule"></i>
+              <h3>调解建议</h3>
+              <p>根据矛盾描述进行深度语义分析和逻辑推理，厘清核心要素和潜在影响，形成有针对性的调解方案，供现场调解参考。</p>
+            </article>
+            <article class="ocard">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><path d="M18 16h22v56H18z" fill="#C00000"/><path d="M48 16h22v56H48z" fill="#E04E2A"/><path d="M24 32h10M24 42h10M54 32h10M54 42h10" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <i class="rule"></i>
+              <h3>引用法条</h3>
+              <p>针对当前矛盾纠纷推送相关法律法规条文，并作法条释义，协助构建完整的法律知识体系，使调解做到有法可依。</p>
+            </article>
+            <article class="ocard">
+              <svg viewBox="0 0 88 88" aria-hidden="true"><rect x="16" y="22" width="40" height="48" rx="3" fill="#C00000"/><rect x="32" y="14" width="40" height="48" rx="3" fill="#E0A325"/><path d="M42 30h20M42 40h20M42 50h12" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/></svg>
+              <i class="rule"></i>
+              <h3>案例推送</h3>
+              <p>推送同类型矛盾调解案例，以及其中使用的方法和预案，为现场调解提供可对照的参照，不作为必须照搬的结论。</p>
+            </article>
+            </div>
+          </div>
+          <div class="engine">
+            <b>纠纷智调</b>
+            <p>基于自然语言深度解析引擎，自动提取时间、地点、人物、事件类型等关键信息，理清因果关系和逻辑链条。双方阐述完成后，调解建议、法律法规依据和相似案例在大屏同时展开，三方同步阅看。</p>
+          </div>
+        </div>
+      </div>
+      <div class="pageno">05</div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>功能演示</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="demo">
+          <video src="演示视频.mp4" controls playsinline preload="metadata"></video>
+        </div>
+      </div>
+      <div class="pageno">06</div>
+    </section>
+
+    <section class="slide">
+      <header class="chrome">
+        <h2>产品优势和建设成效</h2>
+        <img class="logo" src="ppt-assets/logo.png" alt="中国电信" />
+      </header>
+      <img class="bar" src="ppt-assets/bar.jpg" alt="" />
+      <div class="body">
+        <div class="gain">
+          <section>
+            <h3 class="kicker">产品优势</h3>
+            <div class="row">
+              <article>
+                <svg viewBox="0 0 88 88" aria-hidden="true"><path d="M28 40H20a6 6 0 0 0-6 6v18a6 6 0 0 0 6 6h8V40z" fill="#C00000"/><path d="M32 36l8-16c1.6-3.2 7-2.4 7 2v12h16a7 7 0 0 1 7 8l-4 18a8 8 0 0 1-8 6H32V36z" fill="#E04E2A"/></svg>
+                <i class="rule"></i>
+                <h3>简单易用</h3>
+                <p>使用门槛低，操作简单。配置简便、生成快速，<br>语音或文字即可阐述，调解室可直接投入使用。</p>
+              </article>
+              <article>
+                <svg viewBox="0 0 88 88" aria-hidden="true"><path d="M50 8L24 46h18L34 80l36-46H50L58 8z" fill="#C00000"/><circle cx="64" cy="20" r="6" fill="#E0A325"/></svg>
+                <i class="rule"></i>
+                <h3>技术领先</h3>
+                <p>以自然语言认知引擎理解诉求，<br>以法律知识图谱关联法条与案例，<br>以多模态交互承接语音和文字，<br>并按自主反馈调整推荐。</p>
+              </article>
+              <article>
+                <svg viewBox="0 0 88 88" aria-hidden="true"><rect x="16" y="28" width="40" height="46" rx="3" fill="#C00000"/><rect x="26" y="18" width="40" height="46" rx="3" fill="#E04E2A"/><rect x="36" y="26" width="36" height="42" rx="3" fill="#E0A325"/><path d="M44 38h20M44 48h20M44 58h12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+                <i class="rule"></i>
+                <h3>专业性强</h3>
+                <p>内置国家法律法规、司法行政案例，<br>以及调解案例和预案。<br>相较常规通用模型，按纠纷场景作专业化适配，<br>做到有法可依、有案可查。</p>
+              </article>
+            </div>
+          </section>
+          <section class="effects">
+            <h3 class="kicker">建设成效</h3>
+            <div class="band">
+              <div><b>治理能力现代化</b><span>推动社会治理从经验驱动向数据驱动转型。</span></div>
+              <div><b>调解流程专业化</b><span>调解办理形成统一规范，<br>提升基层调解队伍的专业化水平。</span></div>
+              <div><b>调解服务普惠化</b><span>为群众降低化解纠纷的时间和精力成本。</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="pageno">07</div>
+    </section>
+
+    <section class="slide thanks">
+      <img class="logo-lg" src="ppt-assets/logo.png" alt="中国电信" />
+      <img class="ribbon" src="ppt-assets/thanks-ribbon.jpg" alt="" />
+      <div class="center">
+        <h1>谢谢</h1>
+        <img class="line" src="ppt-assets/bar.jpg" alt="" />
+        <div class="who">矛盾纠纷智能调解助手</div>
+      </div>
+      <div class="pageno">08</div>
+    </section>
+
+  </div>
+</div>
+<script>
+  const slides = [...document.querySelectorAll(".slide")];
+  let i = 0;
+  function fit() {
+    const s = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+    document.getElementById("deck").style.transform = "translate(-50%, -50%) scale(" + s + ")";
+  }
+  function show(n) {
+    i = (n + slides.length) % slides.length;
+    slides.forEach((el, idx) => {
+      el.classList.toggle("on", idx === i);
+      if (idx !== i) el.querySelectorAll("video").forEach((v) => v.pause());
+    });
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.target.closest && e.target.closest("video")) return;
+    if (["ArrowRight", "PageDown", " "].includes(e.key)) { e.preventDefault(); show(i + 1); }
+    if (["ArrowLeft", "PageUp", "Backspace"].includes(e.key)) { e.preventDefault(); show(i - 1); }
+    if (e.key === "Home") show(0);
+    if (e.key === "End") show(slides.length - 1);
+  });
+  window.addEventListener("resize", fit);
+  fit();
+</script>
+</body>
+</html>
